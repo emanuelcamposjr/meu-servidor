@@ -1,48 +1,52 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const { Configuration, OpenAIApi } = require("openai");
+const express = require('express');
+const bodyParser = require('body-parser');
+const { OpenAI } = require('openai');
 
 const app = express();
 app.use(bodyParser.json());
 
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
-const openai = new OpenAIApi(configuration);
 
-app.post("/alexa", async (req, res) => {
+app.post('/alexa', async (req, res) => {
   try {
-    const pergunta = req.body.request?.intent?.slots?.pergunta?.value || "Olá, tudo bem?";
+    const intentName = req.body.request.intent?.name;
+    const pergunta = req.body.request.intent?.slots?.pergunta?.value;
 
-    const resposta = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: "Você é um assistente pessoal educado, amigável e direto." },
-        { role: "user", content: pergunta }
-      ]
-    });
+    let resposta = "Desculpe, não entendi a pergunta.";
 
-    const textoResposta = resposta.data.choices[0].message.content;
+    if (intentName === "PerguntarAlgoIntent" && pergunta) {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: "Você é um assistente pessoal cristão e reformado." },
+          { role: "user", content: pergunta }
+        ]
+      });
+
+      resposta = completion.choices[0].message.content;
+    }
 
     res.json({
       version: "1.0",
       response: {
         outputSpeech: {
           type: "PlainText",
-          text: textoResposta
+          text: resposta
         },
         shouldEndSession: false
       }
     });
 
-  } catch (error) {
-    console.error("Erro:", error.message);
+  } catch (err) {
+    console.error(err);
     res.json({
       version: "1.0",
       response: {
         outputSpeech: {
           type: "PlainText",
-          text: "Desculpe, ocorreu um erro ao tentar responder. Tente novamente mais tarde."
+          text: "Ocorreu um erro ao tentar responder."
         },
         shouldEndSession: true
       }
@@ -50,7 +54,11 @@ app.post("/alexa", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor ouvindo na porta ${PORT}`);
+app.get('/', (req, res) => {
+  res.send('Servidor Alexa ativo');
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Servidor ouvindo na porta ${port}`);
 });
