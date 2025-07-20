@@ -1,64 +1,66 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { OpenAI } = require('openai');
+const { Configuration, OpenAIApi } = require("openai");
 
 const app = express();
 app.use(bodyParser.json());
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY // ou coloque diretamente a chave se for local
 });
+const openai = new OpenAIApi(configuration);
 
-app.post('/alexa', async (req, res) => {
-  try {
-    const intentName = req.body.request.intent?.name;
-    const pergunta = req.body.request.intent?.slots?.pergunta?.value;
+app.post('/', async (req, res) => {
+  const intentName = req.body.request?.intent?.name;
+  const pergunta = req.body.request?.intent?.slots?.pergunta?.value;
 
-    let resposta = "Desculpe, não entendi a pergunta.";
-
-    if (intentName === "PerguntarAlgoIntent" && pergunta) {
-      const completion = await openai.chat.completions.create({
+  if (intentName === 'PerguntarAlgoIntent' && pergunta) {
+    try {
+      const completion = await openai.createChatCompletion({
         model: "gpt-4o",
-        messages: [
-          { role: "system", content: "Você é um assistente pessoal cristão e reformado." },
-          { role: "user", content: pergunta }
-        ]
+        messages: [{ role: "user", content: pergunta }],
       });
 
-      resposta = completion.choices[0].message.content;
+      const resposta = completion.data.choices[0].message.content;
+
+      res.json({
+        version: "1.0",
+        response: {
+          outputSpeech: {
+            type: "PlainText",
+            text: resposta,
+          },
+          shouldEndSession: true,
+        },
+      });
+    } catch (error) {
+      console.error("Erro com OpenAI:", error.message);
+      res.json({
+        version: "1.0",
+        response: {
+          outputSpeech: {
+            type: "PlainText",
+            text: "Houve um erro ao buscar a resposta. Tente novamente.",
+          },
+          shouldEndSession: true,
+        },
+      });
     }
-
+  } else {
     res.json({
       version: "1.0",
       response: {
         outputSpeech: {
           type: "PlainText",
-          text: resposta
+          text: "Desculpe, não entendi sua pergunta.",
         },
-        shouldEndSession: false
-      }
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.json({
-      version: "1.0",
-      response: {
-        outputSpeech: {
-          type: "PlainText",
-          text: "Ocorreu um erro ao tentar responder."
-        },
-        shouldEndSession: true
-      }
+        shouldEndSession: false,
+      },
     });
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('Servidor Alexa ativo');
-});
-
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`Servidor ouvindo na porta ${port}`);
+  console.log(`Servidor rodando na porta ${port}`);
 });
