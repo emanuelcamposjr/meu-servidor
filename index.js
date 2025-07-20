@@ -5,42 +5,47 @@ const { Configuration, OpenAIApi } = require("openai");
 const app = express();
 app.use(bodyParser.json());
 
-const openai = new OpenAIApi(new Configuration({
-  apiKey: "SUA_CHAVE_OPENAI"
-}));
+// Carrega a chave da variável de ambiente
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY
+});
+const openai = new OpenAIApi(configuration);
 
+// Rota da Alexa
 app.post("/alexa", async (req, res) => {
   try {
-    const pergunta = req.body.request.intent.slots.pergunta.value;
+    const pergunta = req.body.request?.intent?.slots?.pergunta?.value || "Olá, tudo bem?";
 
     const resposta = await openai.createChatCompletion({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
-        { role: "system", content: "Você é um assistente pessoal chamado Chat, gentil, cristão, conselheiro e brincalhão quando o Emmanuel estiver alegre." },
+        { role: "system", content: "Você é um assistente pessoal educado, amigável e direto." },
         { role: "user", content: pergunta }
       ]
     });
 
-    const fala = resposta.data.choices[0].message.content;
+    const textoResposta = resposta.data.choices[0].message.content;
 
     res.json({
       version: "1.0",
       response: {
         outputSpeech: {
           type: "PlainText",
-          text: fala
+          text: textoResposta
         },
         shouldEndSession: false
       }
     });
+
   } catch (error) {
-    console.error("Erro:", error);
+    console.error("Erro:", error.message);
+
     res.json({
       version: "1.0",
       response: {
         outputSpeech: {
           type: "PlainText",
-          text: "Desculpe, houve um problema ao tentar responder."
+          text: "Desculpe, ocorreu um erro ao tentar responder. Tente novamente mais tarde."
         },
         shouldEndSession: true
       }
@@ -48,4 +53,7 @@ app.post("/alexa", async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log("Servidor rodando na porta 3000"));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor ouvindo na porta ${PORT}`);
+});
