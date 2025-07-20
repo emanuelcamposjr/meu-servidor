@@ -6,7 +6,7 @@ const app = express();
 app.use(bodyParser.json());
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // coloque diretamente a chave se for local: apiKey: "sk-..."
+  apiKey: "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"// process.env.OPENAI_API_KEY, // coloque diretamente a chave se for local: apiKey: "sk-..."
 });
 
 app.post("/", async (req, res) => {
